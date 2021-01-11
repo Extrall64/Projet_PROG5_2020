@@ -28,6 +28,7 @@ h:
 
 
 main:
+	@test passé si : les branchements A, B et C ne sont pas fait et D est fait
     mov r0, #0x7FFFFFFF
     mov r1, #0
     add r0, r0, #10
@@ -40,14 +41,7 @@ c1:
     bvc d
 d1:
 
+	@passé si le registre r1 atteint 0xFFFFFFFF sans rien modifier d'autre
     sub r1, r1, #1
-    beq e   
-e1:
-    bcs f
-f1:
-    bmi g
-g1:
-    bvc h
-h1:
-    
+   
     swi 0x123456

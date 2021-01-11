@@ -219,7 +219,7 @@ int arm_load_store(arm_core p, uint32_t ins) {
 	 			case ROR:
 	 				if (shift_imm == 0) /* RRX */
 	 					index = (get_bit(arm_read_cpsr(p), C) << 31) | (rm >> 1);
-	 					else /* ROR */index = ror(rm, shift_imm);
+	 				else /* ROR */index = ror(rm, shift_imm);
 	 			break;
 	 			default: break;
 	 		}
@@ -359,9 +359,10 @@ int arm_load_store_miscellaneous(arm_core p, uint32_t ins) {
 	uint32_t cond = get_bits(ins, 31, 28);
 
 	uint8_t  U = get_bit(ins, 23);
+	uint8_t  B = get_bit(ins, 22);
 	uint8_t  L = get_bit(ins, 20);
 
-	// uint8_t  S = get_bit(ins, 6);
+	uint8_t  S = get_bit(ins, 6);
 	uint8_t  H = get_bit(ins, 5);
 	
 	uint32_t rn = get_bits(ins, 19, 16);
@@ -377,8 +378,11 @@ int arm_load_store_miscellaneous(arm_core p, uint32_t ins) {
 	
 	uint32_t offset_8, address;
 	uint32_t CP15_reg1_Ubit = 1;
-	uint16_t data;
-	
+
+	uint16_t data_half;
+	uint8_t data_byte;
+	uint32_t extended_data;
+
 	uint32_t cpsr = arm_read_cpsr(p);
 	
 	// Miscellaneous Loads and Stores - Immediate offset
@@ -444,17 +448,29 @@ int arm_load_store_miscellaneous(arm_core p, uint32_t ins) {
 	if (L) {
 		// LDRH
 		if (H) {
-
 			// MemoryAccess(B-bit, E-bit)
 			if (condition(cpsr, cond)) {
 				if (CP15_reg1_Ubit == 0) {
-					if ( get_bits(address, 7, 0) == 0) arm_read_half(p, address, &data);
+					if ( get_bits(address, 7, 0) == 0) arm_read_half(p, address, &data_half);
 					// UNPREDICTABLE data
-					else data = 0;
+					else data_half = 0;
 				}
 				else /* CP15_reg1_Ubit == 1 */
-					arm_read_half(p, address, &data);
-				arm_write_register(p, rd, (uint32_t) data);
+					arm_read_half(p, address, &data_half);
+				extended_data = data_half;
+				if (S && get_bit(data_half, 15))
+					extended_data = ((~0) << 16) | data_half;
+
+				arm_write_register(p, rd, extended_data);
+			}
+		}
+		else if (B) {
+			// MemoryAccess(B-bit, E-bit)
+			if (condition(cpsr, cond)) {
+				arm_read_byte(p, address, &data_byte);
+				if (S && get_bit(data_byte, 7))
+					extended_data = ((~0) << 8) | data_byte;
+				arm_write_register(p, rd, extended_data);
 			}
 		}
 	}
@@ -462,7 +478,6 @@ int arm_load_store_miscellaneous(arm_core p, uint32_t ins) {
 	else {
 		// STRH
 		if (H) {
-
 			// MemoryAccess(B-bit, E-bit)
 			if (condition(cpsr, cond)) {
 				if (CP15_reg1_Ubit == 0) {
@@ -482,51 +497,5 @@ int arm_load_store_miscellaneous(arm_core p, uint32_t ins) {
 
 // STC , LDC
 int arm_coprocessor_load_store(arm_core p, uint32_t ins) {
-	printf("x");
-/*
-    uint8_t P = get_bit(ins, 24);
-    uint8_t U = get_bit(ins, 23);
-    uint8_t N = get_bit(ins, 22);
-    uint8_t W = get_bit(ins, 21);
-    uint8_t L = get_bit(ins, 20);
-    
-    uint32_t rn = get_bits(ins, 19, 16);
-    uint32_t CRd = get_bits(ins, 15, 12);
-    uint32_t cp_num = get_bits(ins, 11, 8);
-    uint32_t eight_bit_word_offset = get_bits(ins, 7, 0);
-
-*/
-    /* A4.1.96   STC
-    
-	MemoryAccess(B-bit, E-bit)
-	processor_id = ExecutingProcessor()
-	if ConditionPassed(cond) then
-    	address = start_address
-    	Memory[address,4] = value from Coprocessor[cp_num]
-        if Shared(address) then // from ARMv6 //
-        	physical_address = TLB(address)
-            ClearExclusiveByAddress(physical_address,processor_id,4)
-        while (NotFinished(coprocessor[cp_num]))
-       		address = address + 4
-       		Memory[address,4] = value from Coprocessor[cp_num]
-       		if Shared(address) then    // from ARMv6 //
-       			physical_address = TLB(address)
-       			ClearExclusiveByAddress(physical_address,processor_id,4)
-       			// See Summary of operation on page A2-49 //
-      assert address == end_address
-    */
-    
-    
-    /* A4.1.19   LDC    
-
-	MemoryAccess(B-bit, E-bit)
-	if ConditionPassed(cond) then
-		address = start_address
-		load Memory[address,4] for Coprocessor[cp_num]
-		while (NotFinished(Coprocessor[cp_num]))
-			address = address + 4
-			load Memory[address,4] for Coprocessor[cp_num]
-		assert address == end_address
-    */
     return UNDEFINED_INSTRUCTION;
 }
