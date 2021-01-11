@@ -85,6 +85,8 @@ void set_mode(registers r, uint16_t mode);
 int current_mode_has_spsr(registers r);
 int in_a_privileged_mode(registers r);
 
+reg_name select_register(uint8_t reg, uint16_t mode);
+
 uint32_t read_register(registers r, uint8_t reg);
 uint32_t read_usr_register(registers r, uint8_t reg);
 uint32_t read_cpsr(registers r);

@@ -1,24 +1,24 @@
  /*
-Armator - simulateur de jeu d'instruction ARMv5T Ã  but pÃ©dagogique
+Armator - simulateur de jeu d'instruction ARMv5T à but pédagogique
 Copyright (C) 2011 Guillaume Huard
 Ce programme est libre, vous pouvez le redistribuer et/ou le modifier selon les
-termes de la Licence Publique GÃ©nÃ©rale GNU publiÃ©e par la Free Software
-Foundation (version 2 ou bien toute autre version ultÃ©rieure choisie par vous).
+termes de la Licence Publique Générale GNU publiée par la Free Software
+Foundation (version 2 ou bien toute autre version ultérieure choisie par vous).
 
-Ce programme est distribuÃ© car potentiellement utile, mais SANS AUCUNE
+Ce programme est distribué car potentiellement utile, mais SANS AUCUNE
 GARANTIE, ni explicite ni implicite, y compris les garanties de
-commercialisation ou d'adaptation dans un but spÃ©cifique. Reportez-vous Ã  la
-Licence Publique GÃ©nÃ©rale GNU pour plus de dÃ©tails.
+commercialisation ou d'adaptation dans un but spécifique. Reportez-vous à la
+Licence Publique Générale GNU pour plus de détails.
 
-Vous devez avoir reÃ§u une copie de la Licence Publique GÃ©nÃ©rale GNU en mÃªme
-temps que ce programme ; si ce n'est pas le cas, Ã©crivez Ã  la Free Software
+Vous devez avoir reçu une copie de la Licence Publique Générale GNU en même
+temps que ce programme ; si ce n'est pas le cas, écrivez à la Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
-Ã‰tats-Unis.
+États-Unis.
 
 Contact: Guillaume.Huard@imag.fr
-	 BÃ¢timent IMAG
+	 Bâtiment IMAG
 	 700 avenue centrale, domaine universitaire
-	 38401 Saint Martin d'HÃ¨res
+	 38401 Saint Martin d'Hères
 */
 #include "arm_data_processing.h"
 #include "arm_exception.h"
@@ -141,7 +141,7 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 	uint8_t code = get_bits(ins, 24, 21);
 	codeop opr = code;
 
- 	int comp;
+ 	int is_comparaison = 0;
   	uint8_t z,n,c,v;
   	uint64_t alu_out;
 	uint64_t rd_value;
@@ -149,70 +149,63 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 	switch(opr) {
 		case AND:		
     		rd_value = rn & shifter_operand;
-      		comp = 1;
-        		z = rd_value == 0;
-        		n = get_bit(rd_value, 31);
-        		c = shifter_carry_out;
-        		v = 0;
+       		z = rd_value == 0;
+       		n = get_bit(rd_value, 31);
+       		c = shifter_carry_out;
+       		v = 0;
 		break;
 		case EOR:
 		  	rd_value = rn ^ shifter_operand;
-     			comp = 1;
-      			z = ((uint32_t)rd_value) == 0;
-      			n = get_bit(rd_value, 31);
-      			c = shifter_carry_out;
-      			v = 0;
+   			z = rd_value == 0;
+   			n = get_bit(rd_value, 31);
+   			c = shifter_carry_out;
+   			v = 0;
 		break;
 		case SUB:
 		  	rd_value = (uint64_t)rn - (uint64_t) shifter_operand;
-  			comp = 1;
 		  	z = ((uint32_t)rd_value) == 0;
 		  	n = get_bit(rd_value, 31);
-  			c = !borrowFrom( rd_value, shifter_operand, rd_value);
+  			c = !borrowFrom( rd_value );
 		  	v = overflowFrom(rn, shifter_operand, rd_value);	
 		break;
 		case RSB:
 		  	rd_value = (uint64_t) shifter_operand - (uint64_t) rn;
-  			comp = 1;
 		  	z =((uint32_t)rd_value) == 0;
 			  n = get_bit(rd_value, 31);
-  			c = !borrowFrom( rd_value, shifter_operand, rd_value);
+  			c = !borrowFrom( rd_value );
 		  	v = overflowFrom(rn, shifter_operand, rd_value);
 		break;
 		case ADD:
 		  	rd_value = (uint64_t) rn  + (uint64_t) shifter_operand;
-			comp = 1;
 			z = ((uint32_t)rd_value) == 0;
 			n = get_bit(rd_value, 31);
-			c = carryFrom(rd_value ,shifter_operand, rn);
+			c = carryFrom(rd_value);
 			v = overflowFrom(rn, shifter_operand, rd_value);
 		break;
 		case ADC:
 			rd_value = (uint64_t) rn + (uint64_t) shifter_operand + (uint64_t) get_bit(cpsr, C);
-			comp = 1;
 			z = ((uint32_t)rd_value) == 0;
 			n = get_bit(rd_value, 31);
-			c = carryFrom(rd_value ,shifter_operand, rn);
+			c = carryFrom(rd_value);
 			v = overflowFrom(rn, shifter_operand, rd_value);
 		break;
 		case SBC:
 		  	rd_value = (uint64_t) rn - (uint64_t) shifter_operand - (uint64_t) (1 - get_bit(cpsr, C));
 			z = ((uint32_t)rd_value) == 0;
 			n = get_bit(rd_value, 31);
-			c = !borrowFrom( rd_value, shifter_operand, rd_value);
+			c = !borrowFrom( rd_value );
 			v = overflowFrom(rn, shifter_operand, rd_value);
 		break;
 		case RSC:
 		  	rd_value = (uint64_t) shifter_operand - (uint64_t) rn - (uint64_t) (1 - get_bit(cpsr, C));
-				arm_write_register(p, rd, rd_value );
+			arm_write_register(p, rd, rd_value );
 			z = ((uint32_t)rd_value) == 0;
 			n = get_bit(rd_value, 31);
-			c = !borrowFrom( rd_value, shifter_operand, rd_value);
+			c = !borrowFrom( rd_value);
 			v = overflowFrom(rn, shifter_operand, rd_value);
 		break;
 		case ORR:
 		  	rd_value = rn | shifter_operand;
-			comp = 1;
 			z = rd_value == 0;
 			n = get_bit(rd_value, 31);
 			c = shifter_carry_out;
@@ -220,7 +213,6 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 		break;
 		case MOV:				
 		  	rd_value = shifter_operand;
-			comp = 1;
 			z = rd_value == 0;
 			n = get_bit(rd_value, 31);
 			c = shifter_carry_out;
@@ -228,7 +220,6 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 		break;
 		case BIC:
 		  	rd_value = rn & ~shifter_operand;
-			comp = 1;
 			z = rd_value == 0;
 			n = get_bit(rd_value, 31);
 			c = shifter_carry_out;
@@ -236,58 +227,57 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 		break;
 		case MVN:
 			rd_value = ~shifter_operand;	
-      			comp = 1;
-      			z = rd_value == 0;
-      			n = get_bit(rd_value, 31);
-      			c = shifter_carry_out;
-      			v = 0;
+   			z = rd_value == 0;
+   			n = get_bit(rd_value, 31);
+   			c = shifter_carry_out;
+   			v = 0;
 		break;
     		case TST:
+  			is_comparaison = 1;
    			alu_out = rn & shifter_operand;
-  			comp = 0;
 		  	z = (uint32_t)alu_out == 0;
   			n = get_bit((uint32_t)alu_out, 31);
 		  	c = shifter_carry_out;
       	v = 0;
 		break;
 		case TEQ:
+  			is_comparaison = 1;
   			alu_out = rn ^ shifter_operand;
-  			comp = 0;
   			z = (uint32_t)alu_out == 0;
   			n = get_bit((uint32_t)alu_out, 31);
 		  	c = shifter_carry_out;
-        v = 0;
+	        v = 0;
 		break;
 		case CMP:
+  			is_comparaison = 1;
   			alu_out = (uint64_t)rn - (uint64_t) shifter_operand;
-    	  comp = 0;
   			z = ((uint32_t)alu_out) == 0;
 		  	n = get_bit(alu_out, 31);
-		  	c = !borrowFrom(alu_out, shifter_operand, rn);
+		  	c = !borrowFrom(alu_out);
 		  	v = overflowFrom(rn, shifter_operand, alu_out);
 		break;
 		case CMN:
+  			is_comparaison = 1;
   			alu_out = (uint64_t) rn + (uint64_t)shifter_operand;
-      			comp = 0;
 		  	z = ((uint32_t)alu_out) == 0;
 		  	n = get_bit(alu_out, 31);
-		  	c = carryFrom(alu_out, shifter_operand, rn);
+		  	c = carryFrom(alu_out);
 		  	v = overflowFrom(rn, shifter_operand, alu_out);					
 		break;
 	}
   
   	if(condition(cpsr, cond)) {
-    		if(comp){
+    		if(!is_comparaison){
       			arm_write_register(p, rd, rd_value );
-		  	if (S == 1 && rd == 15) {
-		    		if (arm_current_mode_has_spsr(p))
-					arm_write_cpsr(p, arm_read_spsr(p));
-				else  return; //UNPREDICTABLE
-			}
-			else if (S)
-          			update_flags(p,z,n,c,v);
+			  	if (S == 1 && rd == 15) {
+					if (arm_current_mode_has_spsr(p))
+						arm_write_cpsr(p, arm_read_spsr(p));
+					else  return; //UNPREDICTABLE
+				}
+				else if (S)
+		      		update_flags(p, z, n, c, v);
     		}else{
-      			update_flags(p,z,n,c,v);
+      			update_flags(p, z, n, c, v);
     	}
   }
 }
@@ -306,16 +296,16 @@ void update_flags(arm_core p, uint8_t z, uint8_t n, uint8_t c, uint8_t v) {
 	arm_write_cpsr(p, cpsr);
 }
 
-int carryFrom(uint64_t x, uint32_t opr1, uint32_t opr2) {
+int carryFrom(uint64_t x) {
 	return x >> 32;
 }
 
-int borrowFrom(uint64_t x, uint32_t opr1, uint32_t opr2) {
-	return !carryFrom(x, opr1, opr2);
+int borrowFrom(uint64_t x) {
+	return !carryFrom(x);
 }
 
 int overflowFrom(int32_t a, int32_t b, int64_t r) {
-  return (get_bit(a, 31) == get_bit(b, 31)) && (get_bit(b, 31) != get_bit(r, 31));  //prouver par table de v�riter : vrai si a[31] = b[31] XOR r[31], faux sinon
+  return (get_bit(a, 31) == get_bit(b, 31)) && (get_bit(b, 31) != get_bit(r, 31));  //prouver par table de v\E9riter : vrai si a[31] = b[31] XOR r[31], faux sinon
 }
 
 // shifter_operand's 11 formats -- see A5-1 in doc
@@ -492,7 +482,7 @@ void rm_ror_shift_imm(arm_core p, uint32_t * shifter_operand, uint8_t * shifter_
 	uint32_t rm = get_bits(*shifter_operand, 3, 0);
 	rm = arm_read_register(p, rm);
 	if (shift_imm == 0) {
-		//See Data-processing operands - Rotate right with extendâ€ on page A5-17
+		//See Data-processing operands - Rotate right with extend” on page A5-17
 	}
 	else { /* shift_imm > 0 */
 		*shifter_operand = ror(rm, shift_imm);

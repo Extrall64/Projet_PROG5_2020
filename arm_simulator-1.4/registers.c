@@ -57,50 +57,8 @@ int in_a_privileged_mode(registers r) {
 }
 
 uint32_t read_register(registers r, uint8_t reg) {
-	reg_name n = reg;
 	uint16_t mode = get_mode(r);
-	switch(mode) {
-		case IRQ:
-			switch(n) {
-				case R13: n = R13_irq; break;
-				case R14: n = R14_irq; break;
-				default:break;
-			}
-		break;
-		case ABT:
-			switch(n) {
-				case R13: n = R13_abt;break;
-				case R14: n = R14_abt;break;
-				default:break;
-			}
-		case UND:
-			switch(n) {
-				case R13: n = R13_und; break;
-				case R14: n = R14_und; break;
-				default:break;
-			}
-		break;
-		case SVC:
-			switch(n) {
-				case R13: n = R13_svc; break;
-				case R14: n = R14_svc; break;
-				default:break;
-			}
-		break;
-		case FIQ:
-			switch(n) {
-				case R8: n = R8_fiq; break;
-				case R9: n = R9_fiq; break;
-				case R10: n = R10_fiq; break;
-				case R11: n = R11_fiq; break;
-				case R12: n = R12_fiq; break;
-				case R13: n = R13_fiq; break;
-				case R14: n = R14_fiq; break;
-				default:break;
-			}
-		break;
-		default: break;
-	}
+	reg_name n = select_register(reg, mode);
 	return r->tab[n];
 }
 
@@ -128,50 +86,8 @@ uint32_t read_spsr(registers r) {
 }
 
 void write_register(registers r, uint8_t reg, uint32_t value) {
-	reg_name n = reg;
 	uint16_t mode = get_mode(r);
-	switch(mode) {
-		case IRQ:
-			switch(n) {
-				case R13: n = R13_irq; break;
-				case R14: n = R14_irq; break;
-				default:break;
-			}
-		break;
-		case ABT:
-			switch(n) {
-				case R13: n = R13_abt; break;
-				case R14: n = R14_abt; break;
-				default:break;
-			}
-		case UND:
-			switch(n) {
-				case R13: n = R13_und; break;
-				case R14: n = R14_und; break;
-				default:break;
-			}
-		break;
-		case SVC:
-			switch(n) {
-				case R13: n = R13_svc; break;
-				case R14: n = R14_svc; break;
-				default:break;
-			}
-		break;
-		case FIQ:
-			switch(n) {
-				case R8: n = R8_fiq; break;
-				case R9: n = R9_fiq; break;
-				case R10: n = R10_fiq; break;
-				case R11: n = R11_fiq; break;
-				case R12: n = R12_fiq; break;
-				case R13: n = R13_fiq; break;
-				case R14: n = R14_fiq; break;
-				default:break;
-			}
-		break;
-		default: break;
-	}
+	reg_name n = select_register(reg, mode);
 	r->tab[n] = value;
 }
 
@@ -196,4 +112,44 @@ void write_spsr(registers r, uint32_t value) {
 		default: break;
 	}
 	r->tab[n] = value;
+}
+
+// select the register index depend on the actual cpu mode
+reg_name select_register(uint8_t reg, uint16_t mode) {
+	reg_name n = reg;
+	switch(n) {
+		case R13:
+			switch(mode) {
+				case IRQ: n = R13_irq; break;
+				case ABT: n = R13_abt; break;							
+				case UND: n = R13_und; break;							
+				case SVC: n = R13_svc; break;
+				case FIQ: n = R13_fiq; break;
+				default:break;
+			}
+		case R14:
+			switch(mode) {
+				case IRQ: n = R14_irq; break;
+				case ABT: n = R14_abt; break;							
+				case UND: n = R14_und; break;							
+				case SVC: n = R14_svc; break;
+				case FIQ: n = R14_fiq; break;
+				default:break;												
+			}
+		default:break;
+	}
+	switch(mode) {
+		case FIQ:
+			switch(n) {
+				case R8: n = R8_fiq; break;
+				case R9: n = R9_fiq; break;
+				case R10: n = R10_fiq; break;
+				case R11: n = R11_fiq; break;
+				case R12: n = R12_fiq; break;
+				default:break;
+			}
+		break;
+		default: break;
+	}
+	return n;
 }
