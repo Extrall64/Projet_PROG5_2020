@@ -31,40 +31,46 @@ void arm_exception(arm_core p, unsigned char exception) {
     /* We only support RESET initially */
     /* Semantics of reset interrupt (ARM manual A2-18) */
 
-    if (!is_priority(p, exception)) return;
+	enqueue(exception, exception);
+	if (max_priority_in_queue() > current_exception(p))
+		exception = dequeue();
+	// if exception has less priority, will execute later
+	else
+		// NB: exception = -1 will escape the switch
+		exception = -1;
 
     switch(exception) {
-    case RESET:
-    	arm_write_cpsr(p, 0x1d3 | Exception_bit_9);
-		arm_write_usr_register(p, 15, 0);
-	break;
+		case RESET:
+			arm_write_cpsr(p, 0x1d3 | Exception_bit_9);
+			arm_write_usr_register(p, 15, 0);
+		break;
 
-	case UNDEFINED_INSTRUCTION:
-		save_state_and_change_mode(p, exception, UND);
-		branch_handler(p);
-	break;
+		case UNDEFINED_INSTRUCTION:
+			save_state_and_change_mode(p, exception, UND);
+			branch_handler(p);
+		break;
 
-	case SOFTWARE_INTERRUPT:
-		save_state_and_change_mode(p, exception, SVC);
-		branch_handler(p);
-	break;
+		case SOFTWARE_INTERRUPT:
+			save_state_and_change_mode(p, exception, SVC);
+			branch_handler(p);
+		break;
 
-	case PREFETCH_ABORT:
-	case DATA_ABORT:
-		save_state_and_change_mode(p, exception, ABT);
-		branch_handler(p);
-	break;
+		case PREFETCH_ABORT:
+		case DATA_ABORT:
+			save_state_and_change_mode(p, exception, ABT);
+			branch_handler(p);
+		break;
 
-	case INTERRUPT:
-		save_state_and_change_mode(p, exception, IRQ);
-		branch_handler(p);
-	break;
+		case INTERRUPT:
+			save_state_and_change_mode(p, exception, IRQ);
+			branch_handler(p);
+		break;
 
-	case FAST_INTERRUPT:
-		save_state_and_change_mode(p, exception, FIQ);
-		branch_handler(p);
-	break;
-	}
+		case FAST_INTERRUPT:
+			save_state_and_change_mode(p, exception, FIQ);
+			branch_handler(p);
+		break;
+		}
 }
 
 void branch_handler(arm_core p) {
@@ -115,17 +121,17 @@ uint32_t select_exception_vector_address(unsigned char exception) {
 	return exception_vector_address;
 }
 
-// FIXME priority of PREFETCH_ABORT > DATA_ABORT here can't be distinguish from cpu mode
-int is_priority(arm_core p, unsigned char exception) {
+// the exception value, else 0 if the proc is not in a exception
+int current_exception(arm_core p) {
 	uint16_t mode = arm_read_cpsr(p) & 31;
-	uint16_t current_exception = 0; // 0: default is the cpu is not in exception
+	uint16_t the_current_exception = 0;
 	switch(mode) {
-		case UND: current_exception = UNDEFINED_INSTRUCTION; break;
-		case SVC: current_exception = SOFTWARE_INTERRUPT;break;
-		case ABT: current_exception = DATA_ABORT; current_exception = PREFETCH_ABORT;break;
-		case IRQ: current_exception = INTERRUPT;break;
-		case FIQ: current_exception = FAST_INTERRUPT;break;
+		case UND: the_current_exception = UNDEFINED_INSTRUCTION; break;
+		case SVC: the_current_exception = SOFTWARE_INTERRUPT;break;
+		case ABT: the_current_exception = DATA_ABORT; the_current_exception = PREFETCH_ABORT;break;
+		case IRQ: the_current_exception = INTERRUPT;break;
+		case FIQ: the_current_exception = FAST_INTERRUPT;break;
 		default: break;
 	}
-	return current_exception < exception;
+	return the_current_exception;
 }

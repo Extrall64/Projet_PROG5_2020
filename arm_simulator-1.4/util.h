@@ -43,6 +43,14 @@ Contact: Guillaume.Huard@imag.fr
 
 int condition(uint32_t cpsr, uint8_t cond);
 
+// added a data structure for exception priority management: priority queue
+int is_empty_queue();
+int max_priority_in_queue();
+void enqueue(int data, int p);
+int dequeue();
+void print();
+
+
 uint32_t asr(uint32_t value, uint8_t shift);
 uint32_t ror(uint32_t value, uint8_t rotation);
 
