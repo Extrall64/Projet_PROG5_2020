@@ -50,6 +50,8 @@ static int arm_execute_instruction(arm_core p) {
  
 	// miscellaneous instructions see Figure A3-4
 	if (is(ins, "XXXX00010XX0XXXXXXXXXXXXXXX0XXXX")) {
+		if (!get_bit(ins, 21) && !get_bits(ins, 7, 5))
+			arm_data_processing_register_mrs(p, ins);
 	}
 		
 	// data processing immediate shift
@@ -151,7 +153,8 @@ static int arm_execute_instruction(arm_core p) {
 int arm_step(arm_core p) {
     int result;
     result = arm_execute_instruction(p);
-    if (result)
+    if (result) {
         arm_exception(p, result);
+        }
     return result;
 }

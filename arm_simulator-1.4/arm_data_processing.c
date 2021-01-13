@@ -1,24 +1,24 @@
  /*
-Armator - simulateur de jeu d'instruction ARMv5T Ã  but pÃ©dagogique
+Armator - simulateur de jeu d'instruction ARMv5T à but pédagogique
 Copyright (C) 2011 Guillaume Huard
 Ce programme est libre, vous pouvez le redistribuer et/ou le modifier selon les
-termes de la Licence Publique GÃ©nÃ©rale GNU publiÃ©e par la Free Software
-Foundation (version 2 ou bien toute autre version ultÃ©rieure choisie par vous).
+termes de la Licence Publique Générale GNU publiée par la Free Software
+Foundation (version 2 ou bien toute autre version ultérieure choisie par vous).
 
-Ce programme est distribuÃ© car potentiellement utile, mais SANS AUCUNE
+Ce programme est distribué car potentiellement utile, mais SANS AUCUNE
 GARANTIE, ni explicite ni implicite, y compris les garanties de
-commercialisation ou d'adaptation dans un but spÃ©cifique. Reportez-vous Ã  la
-Licence Publique GÃ©nÃ©rale GNU pour plus de dÃ©tails.
+commercialisation ou d'adaptation dans un but spécifique. Reportez-vous à la
+Licence Publique Générale GNU pour plus de détails.
 
-Vous devez avoir reÃ§u une copie de la Licence Publique GÃ©nÃ©rale GNU en mÃªme
-temps que ce programme ; si ce n'est pas le cas, Ã©crivez Ã  la Free Software
+Vous devez avoir reçu une copie de la Licence Publique Générale GNU en même
+temps que ce programme ; si ce n'est pas le cas, écrivez à la Free Software
 Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307,
-Ã‰tats-Unis.
+États-Unis.
 
 Contact: Guillaume.Huard@imag.fr
-	 BÃ¢timent IMAG
+	 Bâtiment IMAG
 	 700 avenue centrale, domaine universitaire
-	 38401 Saint Martin d'HÃ¨res
+	 38401 Saint Martin d'Hères
 */
 #include "arm_data_processing.h"
 #include "arm_exception.h"
@@ -68,11 +68,25 @@ int arm_data_processing_shift(arm_core p, uint32_t ins) {
     return UNDEFINED_INSTRUCTION;
 }
 
+// A4.1.38 MRS
+int arm_data_processing_register_mrs(arm_core p, uint32_t ins) {
+	uint8_t cond = get_bits(ins, 31, 28);
+	uint8_t R = get_bit(ins, 22);
+	uint8_t rd = get_bits(ins, 15, 12);
+	uint32_t cpsr = arm_read_cpsr(p);
+	if (condition(cpsr, cond)) {
+		if(R)
+			arm_write_register(p, rd, arm_read_spsr(p));
+		else
+			arm_write_register(p, rd, arm_read_cpsr(p));
+	}
+    return UNDEFINED_INSTRUCTION;
+}
 
 // A4.1.39 MSR
 int arm_data_processing_immediate_msr(arm_core p, uint32_t ins) {
 	uint8_t cond = get_bits(ins, 31, 28);
-	uint32_t R = get_bit(ins, 22);
+	uint8_t R = get_bit(ins, 22);
 		
 	uint32_t field_mask = get_bits(ins, 19, 16);
 	// uint32_t SBO = get_bits(ins, 15, 12);
@@ -125,10 +139,13 @@ int arm_data_processing_immediate_msr(arm_core p, uint32_t ins) {
     return UNDEFINED_INSTRUCTION;
 }
 
-// processing
-// borrowFrom is the negation of carryFrom
+/* processing => executing the instruction, update flags if S bit is set
+	rd_value is uint64, its provide the "carry out" case (rd_value[32] is set) on add & sub instructions and its variants.
+	useless for logical instructions because it never carry out.
+	the variable is casted to uint32_t when stored in a registre.
+*/
 void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shifter_carry_out) {
-	// shifter_operand now is calculated
+	// shifter_operand & shifter_carry_out values is now calculated
 	uint32_t cond = get_bits(ins, 31, 28);
 				
 	uint32_t S = get_bit(ins, 20);		
@@ -141,8 +158,10 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
 	uint8_t code = get_bits(ins, 24, 21);
 	codeop opr = code;
 
+	// boolean: 1 if the instruction is juste a comparaison, else 0
  	int is_comparaison = 0;
   	uint8_t z,n,c,v;
+  	// uint64_t provide an carry out to the 33th bit
   	uint64_t alu_out;
 	uint64_t rd_value;
 
@@ -268,7 +287,7 @@ void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shif
   
   	if(condition(cpsr, cond)) {
     		if(!is_comparaison){
-      			arm_write_register(p, rd, rd_value );
+      			arm_write_register(p, rd, (uint32_t) rd_value );
 			  	if (S == 1 && rd == 15) {
 					if (arm_current_mode_has_spsr(p))
 						arm_write_cpsr(p, arm_read_spsr(p));
@@ -295,17 +314,20 @@ void update_flags(arm_core p, uint8_t z, uint8_t n, uint8_t c, uint8_t v) {
 	// update the cpsr register
 	arm_write_cpsr(p, cpsr);
 }
-
+// C is set if x[32] is set
 int carryFrom(uint64_t x) {
 	return x >> 32;
 }
 
+// borrowFrom is the negation of carryFrom
 int borrowFrom(uint64_t x) {
 	return !carryFrom(x);
 }
 
+// Z is set if two numbers with the same sign gives a result with the opossite sign
 int overflowFrom(int32_t a, int32_t b, int64_t r) {
-  return (get_bit(a, 31) == get_bit(b, 31)) && (get_bit(b, 31) != get_bit(r, 31));  //prouver par table de v\E9riter : vrai si a[31] = b[31] XOR r[31], faux sinon
+  // prooved by a truth table (a[31] <=> b[31]) && (b[31] ^ r[31])
+  return (get_bit(a, 31) == get_bit(b, 31)) && (get_bit(b, 31) != get_bit(r, 31));  
 }
 
 // shifter_operand's 11 formats -- see A5-1 in doc
@@ -482,7 +504,7 @@ void rm_ror_shift_imm(arm_core p, uint32_t * shifter_operand, uint8_t * shifter_
 	uint32_t rm = get_bits(*shifter_operand, 3, 0);
 	rm = arm_read_register(p, rm);
 	if (shift_imm == 0) {
-		//See Data-processing operands - Rotate right with extendâ€ on page A5-17
+		//See Data-processing operands - Rotate right with extend” on page A5-17
 	}
 	else { /* shift_imm > 0 */
 		*shifter_operand = ror(rm, shift_imm);
@@ -511,4 +533,5 @@ void rm_ror_rs(arm_core p, uint32_t * shifter_operand, uint8_t * shifter_carry_o
 		*shifter_carry_out = get_bit(rm, get_bits(rs, 4, 0) - 1);
 	}
 }
+
 

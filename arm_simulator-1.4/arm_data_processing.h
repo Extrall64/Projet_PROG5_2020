@@ -31,7 +31,7 @@ typedef enum {
 
 int arm_data_processing_shift(arm_core p, uint32_t ins);
 int arm_data_processing_immediate_msr(arm_core p, uint32_t ins);
-
+int arm_data_processing_register_mrs(arm_core p, uint32_t ins);
 // processing
 void processing(arm_core p, uint32_t ins, uint32_t shifter_operand, uint8_t shifter_carry_out);
 
