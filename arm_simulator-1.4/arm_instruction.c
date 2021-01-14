@@ -152,9 +152,11 @@ static int arm_execute_instruction(arm_core p) {
 
 int arm_step(arm_core p) {
     int result;
+    /*  "arm_exception(p, -1)" used to branch a priority exception before executing ordinary instuction with arm_execute_instruction
+    */
+    arm_exception(p, -1);
     result = arm_execute_instruction(p);
-    if (result) {
+    if (result)
         arm_exception(p, result);
-        }
     return result;
 }
