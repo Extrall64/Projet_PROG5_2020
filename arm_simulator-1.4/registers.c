@@ -127,6 +127,7 @@ reg_name select_register(uint8_t reg, uint16_t mode) {
 				case FIQ: n = R13_fiq; break;
 				default:break;
 			}
+			break;
 		case R14:
 			switch(mode) {
 				case IRQ: n = R14_irq; break;
@@ -136,6 +137,7 @@ reg_name select_register(uint8_t reg, uint16_t mode) {
 				case FIQ: n = R14_fiq; break;
 				default:break;												
 			}
+			break;
 		default:break;
 	}
 	switch(mode) {

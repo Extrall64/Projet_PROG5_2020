@@ -21,7 +21,6 @@ Contact: Guillaume.Huard@imag.fr
 #include "arm_constants.h"
 #include "arm_core.h"
 #include "util.h"
-
 // Not supported below ARMv6, should read as 0
 #define CP15_reg1_EEbit 0
 #define HIGH_VECTOR_ADDRESS 0
@@ -31,13 +30,20 @@ void arm_exception(arm_core p, unsigned char exception) {
     /* We only support RESET initially */
     /* Semantics of reset interrupt (ARM manual A2-18) */
 
-	enqueue(exception, exception);
-	if (max_priority_in_queue() > current_exception(p))
+    switch(exception) {
+    	case RESET:
+    	case INTERRUPT:
+    	case SOFTWARE_INTERRUPT:
+    	case FAST_INTERRUPT:
+    	case UNDEFINED_INSTRUCTION:
+    	case DATA_ABORT:
+    	case PREFETCH_ABORT:
+			enqueue(exception, exception);
+		break;
+	}
+	if (!is_empty_queue() && max_priority_in_queue() > current_exception(p))
 		exception = dequeue();
-	// if exception has less priority, will execute later
-	else
-		// NB: exception = -1 will escape the switch
-		exception = -1;
+	else return; 	// exception has less priority, will be executed later
 
     switch(exception) {
 		case RESET:
@@ -84,11 +90,10 @@ void save_state_and_change_mode(arm_core p, unsigned char exception, uint16_t mo
 	uint32_t pc = arm_read_register(p, 15);
 	uint32_t cpsr = arm_read_cpsr(p);
 	uint32_t exception_vector_address = select_exception_vector_address(exception);
+
 	// change mode
 	arm_set_mode(p, mode);
-
-	if (exception != DATA_ABORT && exception != PREFETCH_ABORT)
-		pc = pc - 4;
+	if (exception != DATA_ABORT && exception != PREFETCH_ABORT) pc = pc - 4;
 	arm_write_register(p, 14, pc);
 	arm_write_spsr(p, cpsr);
 
@@ -128,7 +133,7 @@ int current_exception(arm_core p) {
 	switch(mode) {
 		case UND: the_current_exception = UNDEFINED_INSTRUCTION; break;
 		case SVC: the_current_exception = SOFTWARE_INTERRUPT;break;
-		case ABT: the_current_exception = DATA_ABORT; the_current_exception = PREFETCH_ABORT;break;
+		case ABT: the_current_exception = DATA_ABORT;break;
 		case IRQ: the_current_exception = INTERRUPT;break;
 		case FIQ: the_current_exception = FAST_INTERRUPT;break;
 		default: break;
