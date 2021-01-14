@@ -12,19 +12,6 @@ c:
 d:
     add r5, r5, #1
     bal d1
-e:
-    add r6, r6, #1  
-    bal e1
-f:
-    add r7, r7, #1
-    bal f1
-g:
-    add r8, r8, #1
-    bal g1
-h:
-    add r9, r9, #1
-    bal h1
-
 
 
 main:
